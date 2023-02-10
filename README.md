@@ -1,0 +1,1 @@
+The script processes incoming messages from Telegram and pushes retrieved data to MongoDB.
