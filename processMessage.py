@@ -6,7 +6,6 @@ from pymongo import MongoClient
 
 # Reading environment variables and generating a Telegram Bot API URL
 BOT_TOKEN = os.environ['BOT_TOKEN']
-CHAT_ID = os.environ['CHAT_ID']
 TELEGRAM_URL = "https://api.telegram.org/bot{}/sendMessage".format(BOT_TOKEN)
 MONGODB_PASSWORD = os.environ['MONGODB_PASSWORD']
 MONGODB_USER = os.environ['MONGODB_USER']
@@ -19,12 +18,12 @@ coll = db['data']
 # extract activity type from message
 def get_activity(message_text):
     if '\U0001F3C3' in message_text:
-        activity_type = 'run'
-    elif '\U0001F6B4' in message_text:
-        activity_type = 'bike'
+        activity_type = 'bieg'
+    elif any(activity in message_text for activity in ['\U0001F6B4', '\U0001F6B5']):
+        activity_type = 'kolo'
     elif '\U0001F3CA' in message_text:
-        activity_type = 'swim'
-    elif '\U000026F7' in message_text:
+        activity_type = 'plywani'
+    elif any(activity in message_text for activity in ['\U0001F3C2', '\U0001F3BF']):
         activity_type = 'biezki'
     else: activity_type = 'Error: activity type could not be determined'
     return activity_type
@@ -41,11 +40,11 @@ def get_distance(message_text, compiled_regex):
     return distance
 
 def recalc_distance(activity_type, distance):
-    if activity_type == 'run':
+    if activity_type == 'bieg':
         recalc_distance = distance
-    elif activity_type == 'bike':
+    elif activity_type == 'kolo':
         recalc_distance = distance/5
-    elif activity_type == 'swim':
+    elif activity_type == 'plywani':
         recalc_distance = distance
     elif activity_type == 'biezki':
         recalc_distance = distance/3
@@ -57,14 +56,20 @@ def lambda_handler(event, context):
         body=json.loads(event['body'])
         print(body)
         message_text = body['message']['text']
-
-        key_activities = {'\U0001F3C3:', '\U0001F6B4:', '\U0001F3CA:', '\U000026F7:'}
-
+        
+        run_emoji = {'\U0001F3C3'}
+        bike_emoji = {'\U0001F6B4', '\U0001F6B5'}
+        swim_emoji = {'\U0001F3CA'}
+        ski_emoji = {'\U0001F3C2', '\U0001F3BF'}
+        
+        # add together all activities emoji
+        key_activities = run_emoji | bike_emoji | swim_emoji | ski_emoji
+        
         # pre compiling regex
         compiled_regex = re.compile(r'\d+(\.|\,)\d+|\d+')
 
         if any(activity in message_text for activity in key_activities):
-            original_distance = get_distance(message_text)
+            original_distance = get_distance(message_text, compiled_regex)
             activity_type = get_activity(message_text)
             recalculated_distance = recalc_distance(activity_type, original_distance)
 
@@ -72,6 +77,7 @@ def lambda_handler(event, context):
             coll.insert_one({
                         'athlete_first_name': body['message']['from']['first_name'],
                         'athlete_last_name': body['message']['from']['last_name'],
+                        'athlete_full_name': body['message']['from']['first_name'] + " " + body['message']['from']['last_name'],
                         'original_distance': original_distance,
                         'recalculated_distance': recalculated_distance,
                         'activity_type': activity_type,
