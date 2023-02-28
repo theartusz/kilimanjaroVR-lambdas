@@ -27,7 +27,7 @@ def get_activity(message_text):
         activity_type = 'biezki'
     else: activity_type = 'Error: activity type could not be determined'
     return activity_type
-
+    
 # extract distance from message - counting with , and .
 def get_distance(message_text, compiled_regex):
     distance = compiled_regex.search(message_text).group()
@@ -43,11 +43,11 @@ def recalc_distance(activity_type, distance):
     if activity_type == 'bieg':
         recalc_distance = distance
     elif activity_type == 'kolo':
-        recalc_distance = distance/5
+        recalc_distance = round(distance/5, 2)
     elif activity_type == 'plywani':
         recalc_distance = distance
     elif activity_type == 'biezki':
-        recalc_distance = distance/3
+        recalc_distance = round(distance/3, 2)
     else: recalc_distance = 'Error: couldnt recalculate distance'
     return recalc_distance
 
@@ -102,6 +102,3 @@ def lambda_handler(event, context):
         return {
             'statusCode': 200
         }
-
-
-
